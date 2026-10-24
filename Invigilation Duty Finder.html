@@ -1,0 +1,229 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Invigilation Duty Finder</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: header + search card on top; below it the chosen person's name, a 4-day x 4-shift grid, then one card per duty with room and room-mates */
+:root{
+  --bg:#f0f2e9; --surface:#fbfbf6; --line:#d9ddcb; --fg:#2a3226; --muted:#69725f;
+  --sage:#58774f; --sage-fg:#fbfbf6; --sage-soft:#e1e9d6; --sage-line:#c3d1b3;
+  --sand:#8d6d2c; --sand-soft:#f0e6c8; --stone:#e9ebdf;
+  --sans:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#171b15; --surface:#20251d; --line:#323a2d; --fg:#e4e9dc; --muted:#9aa58f;
+  --sage:#a4c295; --sage-fg:#171b15; --sage-soft:#2a3526; --sage-line:#3d4c37;
+  --sand:#dcc27e; --sand-soft:#38301a; --stone:#262c22; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#171b15; --surface:#20251d; --line:#323a2d; --fg:#e4e9dc; --muted:#9aa58f;
+  --sage:#a4c295; --sage-fg:#171b15; --sage-soft:#2a3526; --sage-line:#3d4c37;
+  --sand:#dcc27e; --sand-soft:#38301a; --stone:#262c22; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.5;
+  padding-block:28px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:780px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+.kicker{margin:0;font-size:12.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600}
+h1{margin:6px 0 0;font-size:30px;line-height:1.15;font-weight:700;text-wrap:balance}
+.sub{margin:8px 0 0;color:var(--muted)}
+.top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px}
+.theme{display:inline-flex;border:1px solid var(--line);border-radius:999px;background:var(--surface);padding:3px}
+.theme button{all:unset;box-sizing:border-box;cursor:pointer;font-size:13px;font-weight:600;padding:5px 12px;border-radius:999px;color:var(--muted)}
+.theme button[aria-pressed=true]{background:var(--sage);color:var(--sage-fg)}
+.theme button:focus-visible{outline:3px solid var(--sage);outline-offset:2px}
+.steps{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0;padding:0;list-style:none;counter-reset:s}
+.steps li{counter-increment:s;display:flex;align-items:center;gap:8px;font-size:14px;background:var(--stone);border-radius:999px;padding:5px 14px 5px 6px}
+.steps li::before{content:counter(s);display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--sage);color:var(--sage-fg);font-size:12px;font-weight:700}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.search{padding:16px;display:flex;flex-direction:column;gap:10px}
+label{font-size:14px;font-weight:600}
+.field{position:relative}
+input[type=search]{width:100%;font:inherit;font-size:17px;padding:13px 44px 13px 14px;border:1.5px solid var(--sage-line);border-radius:10px;background:var(--bg);color:var(--fg)}
+input[type=search]::-webkit-search-cancel-button{display:none}
+.clear{all:unset;position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;display:grid;place-items:center;cursor:pointer;border-radius:8px;color:var(--muted);font-size:20px}
+.clear:hover{background:var(--stone)}
+input[type=search]:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid var(--sage);outline-offset:2px}
+.hint{font-size:13.5px;color:var(--muted)}
+.list{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:10px;max-height:228px;overflow-y:auto;background:var(--bg)}
+.list li+li{border-top:1px solid var(--line)}
+.list button{all:unset;box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;padding:11px 14px;cursor:pointer}
+.list button:hover{background:var(--sage-soft)}
+.list button:focus-visible{outline:3px solid var(--sage);outline-offset:-3px}
+.list .cnt{font-size:12.5px;color:var(--muted);white-space:nowrap}
+.none{padding:14px;color:var(--muted)}
+.welcome{padding:20px;display:flex;flex-direction:column;gap:6px;color:var(--muted)}
+.welcome b{color:var(--fg);font-size:17px}
+.person{display:flex;flex-direction:column;gap:20px}
+.ph{display:flex;flex-direction:column;gap:10px}
+.ph h2{margin:0;font-size:26px;line-height:1.2;font-weight:700;text-wrap:balance}
+.stats{display:flex;flex-wrap:wrap;gap:8px}
+.stat{font-size:14px;background:var(--sage-soft);border:1px solid var(--sage-line);border-radius:8px;padding:4px 10px}
+.stat b{font-family:var(--mono);font-weight:600}
+.stat.res{background:var(--sand-soft);border-color:transparent}
+h3.sec{margin:0;font-size:17px;font-weight:700}
+.secnote{margin:2px 0 0;font-size:13.5px;color:var(--muted)}
+.gridwrap{overflow-x:auto;padding:0}
+table.grid{border-collapse:collapse;width:100%;min-width:560px}
+.grid th,.grid td{padding:10px 8px;text-align:center;border-bottom:1px solid var(--line);vertical-align:middle}
+.grid thead th{background:var(--stone);font-weight:600;font-size:13.5px;line-height:1.3}
+.grid thead th span{display:block;font-family:var(--mono);font-weight:500;font-size:12px;color:var(--muted)}
+.grid tbody th{text-align:left;font-weight:600;font-size:14px;white-space:nowrap;padding-left:14px}
+.grid tbody th span{display:block;font-weight:400;font-size:12.5px;color:var(--muted)}
+.grid tbody tr:last-child th,.grid tbody tr:last-child td{border-bottom:0}
+.grid td{border-left:1px solid var(--line)}
+.dash{color:var(--line)}
+.rt{display:inline-block;font-family:var(--mono);font-weight:600;font-size:14px;background:var(--sage);color:var(--sage-fg);border-radius:6px;padding:3px 9px;margin:2px}
+.rt.res{background:var(--sand-soft);color:var(--sand)}
+.days{display:flex;flex-direction:column;gap:22px}
+.day{display:flex;flex-direction:column;gap:10px}
+.dayh{display:flex;align-items:baseline;gap:10px;padding-bottom:6px;border-bottom:2px solid var(--sage-line)}
+.dayh b{font-size:18px}
+.dayh span{color:var(--muted);font-size:14px}
+.nod{color:var(--muted);padding:12px 14px;border:1.5px dashed var(--line);border-radius:10px;font-size:14.5px}
+.duty{display:grid;grid-template-columns:150px minmax(0,1fr);gap:0;overflow:hidden}
+.dl{background:var(--sage-soft);padding:14px;display:flex;flex-direction:column;gap:2px;border-right:1px solid var(--sage-line)}
+.dl.res{background:var(--sand-soft);border-right-color:transparent}
+.dl .sh{font-size:12.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.dl .tm{font-family:var(--mono);font-size:13px}
+.dl .lab{margin-top:10px;font-size:12px;color:var(--muted)}
+.dl .room{font-family:var(--mono);font-weight:600;font-size:28px;line-height:1.1}
+.dl.res .room{font-size:20px;color:var(--sand)}
+.dr{padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.dr .l{font-size:13.5px;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{all:unset;box-sizing:border-box;cursor:pointer;background:var(--stone);border:1px solid var(--line);border-radius:8px;padding:5px 11px;font-size:14.5px}
+.chip:hover{background:var(--sage-soft);border-color:var(--sage-line)}
+.chip:focus-visible{outline:3px solid var(--sage);outline-offset:2px}
+.alone{color:var(--muted);font-size:14.5px}
+details{border-top:1px solid var(--line);padding-top:10px}
+summary{cursor:pointer;font-size:13.5px;color:var(--muted);font-weight:500}
+.rooms{display:grid;grid-template-columns:72px minmax(0,1fr);gap:8px 12px;margin-top:10px;font-size:14px}
+.rooms .rn{font-family:var(--mono);font-weight:600}
+.rooms .rn.res{color:var(--sand)}
+.me{background:var(--sage);color:var(--sage-fg);border-radius:4px;padding:0 5px}
+.legend{padding:14px 16px;font-size:13.5px;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+.legend p{margin:0}
+@media (max-width:520px){
+  h1{font-size:26px}
+  .duty{grid-template-columns:1fr}
+  .dl{flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:4px 12px;border-right:0;border-bottom:1px solid var(--sage-line)}
+  .dl .lab{display:none}
+  .dl .room{order:-1;width:100%;font-size:30px}
+  .dl.res .room{font-size:22px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+<div class="wrap">
+  <header>
+    <div class="top">
+      <p class="kicker">Integral University, Lucknow · Computer Application</p>
+      <div class="theme" id="theme" role="group" aria-label="Theme">
+        <button type="button" data-t="auto" aria-pressed="true">Auto</button>
+        <button type="button" data-t="light" aria-pressed="false">Light</button>
+        <button type="button" data-t="dark" aria-pressed="false">Dark</button>
+      </div>
+    </div>
+    <h1>Invigilation Duty Finder</h1>
+    <p class="sub">Second Continuous Assessment · 26 to 29 October 2026</p>
+    <ol class="steps">
+      <li>Type a name</li>
+      <li>Pick from the list</li>
+      <li>See duties and room-mates</li>
+    </ol>
+  </header>
+
+  <section class="card search" aria-label="Search">
+    <label for="q">Staff name</label>
+    <div class="field">
+      <input id="q" type="search" placeholder="e.g. Anwar, Shafeeq, Khan" autocomplete="off">
+      <button type="button" class="clear" id="clr" aria-label="Clear search" hidden>×</button>
+    </div>
+    <div class="hint" id="hint"></div>
+    <ul class="list" id="list" aria-label="Matching staff"></ul>
+  </section>
+
+  <main id="out" aria-live="polite"></main>
+
+  <section class="card legend" aria-label="How to read">
+    <p><b>Shift</b>: I = 9:00–10:30, II = 11:00–12:30, III = 1:00–2:30, IV = 3:00–4:30.</p>
+    <p><b>Reserve</b>: standby duty. There is no fixed room for that shift; report when called.</p>
+    <p>In the chart, a few people have an extra row without a date under Thursday. That duty is shown under 29 Oct.</p>
+  </section>
+</div>
+<script>
+const DATA=[{"n":"Dr. Anwar Bari","d":[["26",2,"D103"],["26",4,"D116"],["27",1,"D116"],["27",4,"D216"],["28",2,"D213"],["28",4,"RESERVE"],["29",4,"D313"]]},{"n":"Dr. Arshad Ali","d":[["26",2,"D304"],["26",4,"RESERVE"],["27",2,"D203"],["27",4,"D313"],["28",1,"D305"],["28",3,"D316"],["29",3,"D204"],["29",3,"D213"]]},{"n":"Dr. Mohd. Waris Khan","d":[["26",1,"D116"],["26",3,"D220"],["27",1,"D213"],["27",3,"D103"],["28",2,"D216"],["28",4,"RESERVE"],["29",2,"D316"]]},{"n":"Dr. Ausaf Ahmad","d":[["26",1,"RESERVE"],["26",4,"D205"],["27",1,"D120"],["27",3,"D205"],["28",1,"D220"],["29",1,"D116"],["29",3,"D205"]]},{"n":"Dr. Mohd. Shabbir","d":[["26",1,"D313"],["26",3,"D313"],["27",2,"D313"],["27",4,"D116"],["28",2,"D313"],["28",4,"RESERVE"],["29",2,"D316"]]},{"n":"Dr. Asif Khan","d":[["26",1,"D320"],["26",3,"D213"],["27",2,"D104"],["27",3,"RESERVE"],["28",2,"D205"],["29",1,"D105"],["29",3,"D213"]]},{"n":"Dr. Afreen Khan","d":[["26",1,"D105"],["26",3,"D216"],["27",2,"D316"],["27",4,"D203"],["28",2,"D320"],["29",2,"D316"],["29",4,"RESERVE"]]},{"n":"Mrs. Fareen","d":[["26",2,"RESERVE"],["26",4,"D204"],["27",2,"D216"],["27",4,"D320"],["28",1,"D203"],["29",1,"D313"],["29",1,"D216"],["29",3,"D216"]]},{"n":"Mr. Safikur Rahman Khan","d":[["26",1,"D213"],["26",3,"D320"],["27",1,"D303"],["27",3,"D116"],["28",1,"RESERVE"],["28",3,"D213"],["29",3,"D316"]]},{"n":"Mr. Kamran Ahmad","d":[["26",2,"RESERVE"],["26",3,"D105"],["27",1,"D320"],["27",3,"D216"],["28",2,"D304"],["29",1,"D220"],["29",3,"D316"]]},{"n":"Mr. Shubham Kumar","d":[["26",1,"D305"],["26",3,"D316"],["27",2,"D213"],["27",4,"D120"],["28",2,"D313"],["29",1,"D320"],["29",4,"RESERVE"]]},{"n":"Mr. Shameem Ahmad Ansari","d":[["26",1,"D205"],["26",3,"D304"],["27",1,"D213"],["28",2,"D204"],["29",1,"D316"],["29",3,"D303"],["29",4,"RESERVE"]]},{"n":"Mrs. Farha Zia","d":[["26",2,"D213"],["26",4,"D203"],["27",1,"D305"],["27",3,"D220"],["29",1,"D316"],["29",2,"RESERVE"],["29",4,"D204"]]},{"n":"Mr. Vishal Agarwal","d":[["26",1,"D216"],["26",3,"D105"],["27",1,"D313"],["27",4,"D303"],["28",2,"D305"],["28",4,"RESERVE"],["29",1,"D204"]]},{"n":"Ms. Nadiya Parveen","d":[["26",1,"D313"],["26",3,"D205"],["27",2,"D303"],["27",4,"D316"],["28",1,"D216"],["28",3,"RESERVE"],["29",2,"D313"]]},{"n":"Ms. Fiza Afreen","d":[["26",2,"D103"],["26",4,"D305"],["27",3,"D313"],["27",4,"RESERVE"],["28",1,"D104"],["28",3,"D116"],["29",1,"D205"]]},{"n":"Mr. Motashim Rasool","d":[["26",1,"D205"],["26",3,"D313"],["27",2,"D120"],["27",4,"RESERVE"],["28",1,"D303"],["28",3,"D313"],["29",2,"D313"]]},{"n":"Mr. Sumit Yadav","d":[["26",1,"D104"],["26",3,"D116"],["27",1,"D104"],["27",3,"D313"],["28",1,"RESERVE"],["28",3,"D205"],["29",1,"D213"]]},{"n":"Dr. Syed Adnan Afaq","d":[["26",1,"D220"],["26",3,"D316"],["27",2,"D305"],["27",3,"RESERVE"],["28",1,"D204"],["28",3,"D204"],["29",3,"D316"]]},{"n":"Dr. Mohd. Arif Ali Usmani","d":[["26",2,"D220"],["26",4,"D216"],["27",1,"D205"],["27",3,"D213"],["28",2,"D213"],["29",1,"D216"],["29",3,"RESERVE"]]},{"n":"Mr. Uvais Ahmad","d":[["26",1,"D120"],["26",3,"D213"],["27",2,"D320"],["27",4,"D116"],["28",2,"RESERVE"],["29",2,"D313"],["29",4,"D313"]]},{"n":"Ms. Saumya Singh","d":[["26",2,"D313"],["26",4,"D220"],["27",1,"D216"],["27",3,"D204"],["28",1,"RESERVE"],["28",3,"D303"],["29",1,"D116"]]},{"n":"Mr. Mohd Adnan","d":[["26",1,"D203"],["26",4,"D320"],["27",2,"D205"],["27",4,"D316"],["28",2,"D220"],["29",2,"D304"],["29",3,"RESERVE"]]},{"n":"Dr. Shweta Dwivedi","d":[["26",1,"D216"],["26",3,"D120"],["27",1,"D316"],["27",3,"D205"],["27",4,"D220"],["28",2,"D116"],["28",3,"D216"]]},{"n":"Mr. Pankaj Kumar","d":[["26",1,"D320"],["26",3,"D313"],["27",1,"D204"],["27",3,"RESERVE"],["28",1,"D313"],["28",3,"D104"],["29",4,"D313"]]},{"n":"Ms. Arshiya Dilshad","d":[["26",1,"D303"],["26",3,"RESERVE"],["27",3,"D305"],["28",2,"D216"],["28",4,"D103"],["29",1,"D305"],["29",3,"D203"]]},{"n":"Mr. Hifzurrahaman","d":[["26",1,"D204"],["26",3,"D220"],["27",1,"D305"],["27",3,"D316"],["28",1,"RESERVE"],["28",3,"D216"],["29",2,"D303"]]},{"n":"Dr. Mirza Ghazanfar Beg","d":[["26",1,"D316"],["26",3,"D203"],["27",2,"D216"],["27",4,"D105"],["28",2,"D316"],["29",1,"D203"],["29",3,"RESERVE"]]},{"n":"Mr. Mohammad Isha Mansoori","d":[["26",1,"RESERVE"],["26",3,"D204"],["27",2,"D103"],["27",4,"D313"],["28",2,"D103"],["29",2,"D216"],["29",4,"D316"]]},{"n":"Dr. Abida Khanam","d":[["26",1,"RESERVE"],["27",3,"D120"],["28",2,"D120"],["29",2,"D120"],["29",4,"D120"]]},{"n":"Dr. Kashif Asad","d":[["26",1,"D103"],["26",3,"RESERVE"],["27",1,"D320"],["27",3,"D313"],["28",1,"D120"],["28",3,"D313"],["29",3,"D220"]]},{"n":"Mr. Tariq Sagheer","d":[["26",2,"D313"],["26",4,"D204"],["27",1,"RESERVE"],["27",3,"D220"],["28",2,"D303"],["29",1,"D216"],["29",3,"D120"]]},{"n":"Mr. Mohammad Shafeeq","d":[["26",1,"D320"],["26",3,"D216"],["27",2,"D203"],["27",3,"RESERVE"],["28",1,"D105"],["29",1,"D103"],["29",3,"D305"]]},{"n":"Mr. Hamdi Shakeel","d":[["26",1,"RESERVE"],["27",1,"D103"],["27",3,"D216"],["28",1,"D220"],["28",3,"D304"],["29",2,"D303"],["29",4,"D216"]]},{"n":"Dr. Nafees Akhtar Farooqui","d":[]},{"n":"Mr. Saquib Ali","d":[["26",2,"D104"],["26",4,"D116"],["27",2,"D304"],["27",4,"D213"],["28",2,"D313"],["29",3,"D220"],["29",4,"RESERVE"]]},{"n":"Mr. Nazish Adeel","d":[["26",1,"D204"],["26",4,"D213"],["27",1,"D120"],["27",4,"D103"],["28",2,"D320"],["29",1,"RESERVE"],["29",3,"D313"]]},{"n":"Mr. Ajay Pratap Singh","d":[["26",2,"RESERVE"],["26",4,"D316"],["27",3,"D305"],["28",1,"D213"],["28",3,"D120"],["29",1,"D120"],["29",3,"D320"]]},{"n":"Mr. Mohd. Saquib Usmani","d":[["26",2,"RESERVE"],["26",3,"D303"],["27",4,"D205"],["28",1,"D213"],["28",3,"D205"],["29",1,"D104"],["29",4,"D104"]]},{"n":"Mr. Ali Ahmad","d":[["26",1,"D304"],["26",3,"D116"],["27",1,"RESERVE"],["27",3,"D116"],["28",1,"D216"],["28",3,"D316"],["29",4,"D205"]]},{"n":"Mr. Ateeque Ahmed","d":[["26",2,"RESERVE"],["26",4,"D313"],["27",4,"D204"],["28",2,"D313"],["28",4,"D120"],["29",1,"D313"],["29",3,"D205"]]},{"n":"Ms. Astha Srivastava","d":[["26",2,"D320"],["27",2,"D320"],["27",4,"D313"],["28",1,"RESERVE"],["28",3,"D105"],["29",2,"D205"],["29",4,"D316"]]},{"n":"Mrs. Gausiya Yasmeen","d":[["26",1,"D116"],["26",3,"D320"],["27",1,"D105"],["27",3,"D213"],["28",2,"D204"],["29",1,"D316"],["29",2,"RESERVE"]]},{"n":"Mr. Shahnawaz","d":[["26",2,"D103"],["26",4,"D216"],["27",2,"D316"],["27",4,"D303"],["28",2,"D116"],["29",1,"RESERVE"],["29",4,"D320"]]},{"n":"Mr. Mohd. Sharif","d":[["26",1,"RESERVE"],["26",4,"D304"],["27",2,"D303"],["27",4,"D213"],["28",2,"D216"],["29",1,"D313"],["29",3,"D116"]]},{"n":"Mr. Sarvesh Kumar","d":[["26",1,"D105"],["26",3,"D305"],["27",1,"D116"],["27",3,"D304"],["28",3,"D304"],["29",1,"RESERVE"],["29",3,"D313"]]},{"n":"Mr. Shahnwaz Afzal","d":[["26",2,"D116"],["26",4,"D216"],["27",1,"D316"],["27",3,"D104"],["28",2,"RESERVE"],["28",3,"D213"],["29",2,"D204"],["29",4,"D105"]]},{"n":"Mr. Mohammad Muzammil","d":[["26",2,"D303"],["26",4,"RESERVE"],["27",1,"D216"],["27",3,"D203"],["28",2,"D203"],["28",4,"D104"],["29",2,"D203"],["29",4,"D213"]]},{"n":"Mr. Mohd Maaz","d":[["26",2,"D205"],["26",3,"RESERVE"],["27",2,"D116"],["27",4,"D313"],["28",2,"D213"],["28",4,"D103"],["29",2,"D213"],["29",4,"D303"]]},{"n":"Mr. Mohd Shafeeq","d":[["26",2,"D316"],["26",4,"RESERVE"],["27",1,"D203"],["27",3,"D320"],["28",1,"D313"],["28",3,"D303"],["29",2,"D116"],["29",4,"D216"]]},{"n":"Mr. Mohd Usman","d":[["26",1,"D316"],["26",3,"D104"],["27",1,"D316"],["27",3,"D320"],["28",2,"RESERVE"],["28",3,"D305"],["29",1,"D303"],["29",4,"D304"]]},{"n":"Ms. Ayesha Camran","d":[["26",1,"D316"],["26",4,"D303"],["27",2,"D105"],["28",2,"D316"],["28",4,"RESERVE"],["29",1,"D304"],["29",4,"D303"]]},{"n":"Mr. Abdul Hannan","d":[["26",1,"D213"],["26",3,"D320"],["27",2,"D313"],["27",4,"D104"],["28",1,"D316"],["28",3,"RESERVE"],["29",2,"D320"],["29",4,"D203"]]},{"n":"Ms. Shagufta Siddiqui","d":[["26",2,"D216"],["26",4,"D213"],["27",1,"D204"],["27",3,"D216"],["28",2,"RESERVE"],["28",3,"D203"],["29",1,"D216"],["29",3,"D313"]]},{"n":"Mr. Ayaz Ahmad","d":[["26",1,"D313"],["26",4,"D105"],["27",2,"D313"],["27",4,"D216"],["28",1,"D103"],["28",3,"RESERVE"],["29",1,"D103"],["29",3,"D305"]]},{"n":"Mr. Maqsood Ahmad","d":[["26",2,"D213"],["26",4,"D220"],["27",1,"RESERVE"],["27",3,"D105"],["28",1,"D305"],["28",3,"D216"],["29",1,"D220"],["29",3,"D303"]]},{"n":"Mr. Alimullah Khan","d":[["26",1,"D304"],["26",3,"D116"],["27",1,"D103"],["27",3,"D316"],["28",1,"D303"],["28",3,"RESERVE"],["29",1,"D205"],["29",3,"D116"]]},{"n":"Mr. Kaifi Qazi","d":[["26",2,"D120"],["27",2,"D204"],["27",4,"D116"],["28",2,"D304"],["28",4,"D203"],["29",2,"D116"],["29",3,"D104"],["29",4,"RESERVE"]]},{"n":"Mr. Shanti Sharan Singh","d":[["26",2,"D305"],["26",4,"D316"],["27",2,"RESERVE"],["27",3,"D303"],["28",1,"D116"],["28",3,"D316"],["29",1,"D313"],["29",3,"D216"]]},{"n":"Mr. Ashad Ullah Khan","d":[["26",2,"D120"],["26",4,"D116"],["27",2,"D120"],["27",4,"D213"],["28",1,"RESERVE"],["28",3,"D305"],["29",1,"D104"],["29",3,"D304"]]},{"n":"Mr. Mohd. Talha","d":[["26",1,"D103"],["26",3,"D313"],["27",2,"D216"],["27",4,"D305"],["28",1,"D320"],["28",3,"D313"],["29",1,"RESERVE"],["29",3,"D213"]]},{"n":"Mr. Mohammad Ashif","d":[["26",2,"D116"],["26",4,"D205"],["27",2,"D213"],["27",4,"D304"],["28",2,"D104"],["29",1,"D120"],["29",2,"RESERVE"],["29",4,"D220"]]},{"n":"Mr. Atif Bashir","d":[["26",1,"D216"],["26",3,"D304"],["27",2,"D316"],["27",4,"D320"],["28",2,"D105"],["28",4,"RESERVE"],["29",1,"D105"],["29",3,"D120"]]},{"n":"Mr. Mohd. Nabeel Khan","d":[["26",1,"D305"],["26",4,"D116"],["27",1,"D220"],["27",3,"D316"],["28",2,"RESERVE"],["28",3,"D220"],["29",1,"D316"],["29",3,"D216"]]},{"n":"Mr. Mohd. Faishal Ahmad","d":[["26",1,"D220"],["26",3,"D316"],["27",2,"D220"],["27",4,"D213"],["28",2,"D205"],["28",4,"D104"],["29",2,"D116"],["29",3,"RESERVE"]]},{"n":"Mr. Abdullah","d":[["26",2,"D203"],["26",4,"D216"],["27",1,"D304"],["27",3,"D204"],["27",4,"RESERVE"],["28",3,"D120"],["29",1,"D204"],["29",3,"D105"]]},{"n":"Mr. Naushad Ahmad","d":[["26",2,"D216"],["26",3,"RESERVE"],["27",2,"D320"],["27",4,"D216"],["28",1,"D316"],["28",3,"D320"],["29",1,"D305"],["29",3,"D303"]]},{"n":"Mr. Faraz Anwar","d":[["26",2,"D204"],["26",4,"D313"],["27",2,"RESERVE"],["27",3,"D116"],["28",1,"D203"],["28",3,"D213"],["29",1,"D203"],["29",3,"D103"]]},{"n":"Mr. Abdullah Aqeel","d":[["26",1,"D203"],["26",3,"D305"],["27",1,"D313"],["27",3,"D213"],["28",2,"D116"],["28",3,"RESERVE"],["29",2,"D105"],["29",4,"D304"]]},{"n":"Mr. Mohd. Amir Farooqui","d":[["26",2,"D303"],["26",4,"D313"],["27",2,"D116"],["27",4,"D316"],["28",2,"D303"],["28",4,"D204"],["29",1,"RESERVE"],["29",3,"D320"]]},{"n":"Mr. Salahuddin Sarim","d":[["26",2,"D313"],["26",4,"D104"],["27",2,"D316"],["27",4,"D204"],["28",1,"D213"],["28",3,"RESERVE"],["29",2,"D305"],["29",4,"D103"]]},{"n":"Mr. Mohd. Anas","d":[["26",1,"RESERVE"],["26",3,"D216"],["27",1,"D303"],["27",3,"D313"],["28",1,"D105"],["28",3,"D316"],["29",2,"D104"],["29",4,"D316"]]},{"n":"Mr. Inzamam Ahmad","d":[["26",1,"D120"],["26",3,"D213"],["27",3,"D104"],["27",4,"RESERVE"],["28",1,"D304"],["28",3,"D203"],["29",2,"D103"],["29",4,"D116"]]},{"n":"Mr. Syed Hamza Ali","d":[["26",2,"D105"],["26",4,"D213"],["27",2,"D116"],["27",4,"D205"],["28",1,"D205"],["28",3,"D104"],["29",2,"RESERVE"],["29",3,"D203"]]}];
+const DAYS={"26":["Monday","26 Oct"],"27":["Tuesday","27 Oct"],"28":["Wednesday","28 Oct"],"29":["Thursday","29 Oct"]};
+const SH={1:["Shift I","09:00–10:30"],2:["Shift II","11:00–12:30"],3:["Shift III","13:00–14:30"],4:["Shift IV","15:00–16:30"]};
+const slot={};
+DATA.forEach((p,i)=>p.d.forEach(([d,s,r])=>{const k=d+"|"+s;(slot[k]??={});(slot[k][r]??=[]).push(i)}));
+const $=id=>document.getElementById(id);
+const q=$("q"),list=$("list"),out=$("out"),clr=$("clr"),hint=$("hint");
+let sel=-1,open=true;
+const esc=t=>t.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const norm=t=>t.toLowerCase().replace(/[.,]/g," ").replace(/\s+/g," ").trim();
+const key=n=>n.replace(/^(Dr|Mr|Mrs|Ms)\.? /,"");
+const order=DATA.map((p,i)=>i).sort((a,b)=>key(DATA[a].n).localeCompare(key(DATA[b].n)));
+function renderList(){
+  clr.hidden=!q.value;
+  if(!open){list.hidden=true;hint.textContent="";return}
+  list.hidden=false;
+  const toks=norm(q.value).split(" ").filter(Boolean);
+  const hits=order.filter(i=>{const n=norm(DATA[i].n);return toks.every(t=>n.includes(t))});
+  hint.textContent=toks.length?hits.length+(hits.length===1?" name found":" names found"):DATA.length+" staff. Type a name or pick from the list.";
+  list.innerHTML=hits.length?hits.map(i=>`<li><button type="button" data-i="${i}"><span>${esc(DATA[i].n)}</span><span class="cnt">${DATA[i].d.length} duty</span></button></li>`).join(""):`<li class="none">No name matches "${esc(q.value)}". Try a different spelling.</li>`;
+}
+function chips(ids){return `<div class="chips">${ids.map(i=>`<button type="button" class="chip" data-i="${i}">${esc(DATA[i].n)}</button>`).join("")}</div>`}
+function roomTag(r){return r==="RESERVE"?`<span class="rt res">Reserve</span>`:`<span class="rt">${r}</span>`}
+function welcome(){out.innerHTML=`<div class="card welcome"><b>Choose a name</b><span>Their duties, rooms and room-mates will appear here.</span></div>`}
+function show(i){
+  sel=i;open=false;q.value=DATA[i].n;renderList();
+  const p=DATA[i];
+  const byDay={};p.d.forEach(([d,s,r])=>{((byDay[d]??={})[s]??=[]).push(r)});
+  const fixed=p.d.filter(x=>x[2]!=="RESERVE").length,res=p.d.length-fixed;
+  const days=new Set(p.d.map(x=>x[0])).size;
+  let h=`<section class="person"><div class="ph"><h2>${esc(p.n)}</h2>`;
+  if(p.d.length)h+=`<div class="stats"><span class="stat"><b>${fixed}</b> room ${fixed===1?"duty":"duties"}</span>${res?`<span class="stat res"><b>${res}</b> reserve</span>`:""}<span class="stat"><b>${days}</b> ${days===1?"day":"days"}</span></div>`;
+  h+=`</div>`;
+  if(!p.d.length){h+=`<div class="nod">No duty is listed for this name in the chart.</div></section>`;out.innerHTML=h;return}
+  h+=`<div><h3 class="sec">At a glance</h3><p class="secnote">Room by day and shift. A dash means no duty.</p></div>
+  <div class="card gridwrap"><table class="grid"><thead><tr><th scope="col"></th>${[1,2,3,4].map(s=>`<th scope="col">${SH[s][0]}<span>${SH[s][1]}</span></th>`).join("")}</tr></thead><tbody>`;
+  for(const d of Object.keys(DAYS)){
+    h+=`<tr><th scope="row">${DAYS[d][1]}<span>${DAYS[d][0]}</span></th>${[1,2,3,4].map(s=>{const rs=(byDay[d]||{})[s];return `<td>${rs?rs.map(roomTag).join(""):`<span class="dash">–</span>`}</td>`}).join("")}</tr>`;
+  }
+  h+=`</tbody></table></div>
+  <div><h3 class="sec">Day-wise details</h3><p class="secnote">Each duty shows who else is in the room. Tap a name to see their duties.</p></div><div class="days">`;
+  for(const d of Object.keys(DAYS)){
+    h+=`<div class="day"><div class="dayh"><b>${DAYS[d][1]} 2026</b><span>${DAYS[d][0]}</span></div>`;
+    const shifts=Object.keys(byDay[d]||{}).map(Number).sort();
+    if(!shifts.length)h+=`<div class="nod">No duty on this day</div>`;
+    shifts.forEach(s=>byDay[d][s].sort().forEach(r=>{
+      const isRes=r==="RESERVE",grp=slot[d+"|"+s][r].filter(x=>x!==i);
+      const all=slot[d+"|"+s],rooms=Object.keys(all).sort((a,b)=>(a==="RESERVE")-(b==="RESERVE")||a.localeCompare(b));
+      h+=`<div class="card duty"><div class="dl ${isRes?"res":""}"><span class="sh">${SH[s][0]}</span><span class="tm">${SH[s][1]}</span><span class="lab">${isRes?"Standby":"Room"}</span><span class="room">${isRes?"Reserve":r}</span></div>
+      <div class="dr"><span class="l">${isRes?"Also on reserve":"In room "+r+" with"}</span>${grp.length?chips(grp):`<span class="alone">${isRes?"No one else on reserve":"No one else in this room"}</span>`}
+      <details><summary>See all rooms in this shift (${rooms.length})</summary><div class="rooms">${rooms.map(rm=>`<span class="rn ${rm==="RESERVE"?"res":""}">${rm==="RESERVE"?"Reserve":rm}</span><span>${all[rm].map(x=>x===i?`<span class="me">${esc(DATA[x].n)}</span>`:esc(DATA[x].n)).join(", ")}</span>`).join("")}</div></details></div></div>`;
+    }));
+    h+=`</div>`;
+  }
+  h+=`</div></section>`;
+  out.innerHTML=h;
+}
+list.addEventListener("click",e=>{const b=e.target.closest("button[data-i]");if(b){show(+b.dataset.i);out.scrollIntoView({behavior:"smooth",block:"start"})}});
+out.addEventListener("click",e=>{const b=e.target.closest("button.chip");if(b){show(+b.dataset.i);window.scrollTo({top:0,behavior:"smooth"})}});
+q.addEventListener("input",()=>{open=true;renderList()});
+q.addEventListener("focus",()=>{if(!open){open=true;renderList();q.select()}});
+clr.addEventListener("click",()=>{q.value="";sel=-1;open=true;renderList();welcome();q.focus()});
+function setTheme(t,save){
+  const r=document.documentElement;
+  if(t==="light"||t==="dark")r.setAttribute("data-theme",t);else r.removeAttribute("data-theme");
+  document.querySelectorAll("#theme button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.t===t)));
+  if(save){try{localStorage.setItem("duty-theme",t)}catch(e){}}
+}
+$("theme").addEventListener("click",e=>{const b=e.target.closest("button[data-t]");if(b)setTheme(b.dataset.t,true)});
+let saved="auto";try{saved=localStorage.getItem("duty-theme")||"auto"}catch(e){}
+setTheme(saved,false);
+renderList();welcome();
+</script>
+
+</body></html>
